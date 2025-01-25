@@ -20,7 +20,6 @@ def fpc(test, alpha=0.05, fisher=True, resample=False, frac=0.5):
 
             p_value = test.pure_triple(S, v, fisher, resample, frac)
             print(p_value)
-            print()
 
             if p_value < alpha:
                 impure = True
@@ -91,16 +90,16 @@ X = simulate(B, O, n)
 df = pd.DataFrame(X)[obs]
 
 test = Wishart(df)
-pure_triples = fpc(test)
+pure_triples = fpc(test, resample=True)
 print("Wishart", pure_triples)
 print()
 
-# test = Bollen_Ting(df)
-# pure_triples = fpc(test, fisher=False)
-# print("Bollen Ting", pure_triples)
-# print()
+test = Bollen_Ting(df)
+pure_triples = fpc(test, fisher=False)
+print("Bollen Ting", pure_triples)
+print()
 
 test = Ark(df)
-pure_triples = fpc(test)
+pure_triples = fpc(test, resample=True)
 print("Ark", pure_triples)
 print()
