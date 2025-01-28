@@ -25,45 +25,74 @@ def fpc(test, alpha=0.05, fisher=True, resample=False, frac=0.5):
                 impure = True
                 break
 
-        if not impure: pure_clusters.append(S)
+        if impure: continue
+        pure_clusters.append(set(S))
 
     return pure_clusters
 
 
-# def grow_clusters(pure_clusters, threshold):
-#
-#     W = []
-#     for pure_cluster in pure_clusters:
-#         for w in pure_cluster:
-#             if w in W: continue
-#             W.append(w)
-#
-#     clusters = pure_clusters
-#
-#     for cluster in clusters:
-#         for S in combinations(cluster, 2):
-#             for w in W:
-#                 if w in cluster: continue
-#                 test_cluster = S
-#
-#
-#
-#     return clusters
+def grow_clusters(pure_clusters, threshold):
+
+    # what are the members of pure-clusters?
+    # does order matter?
+
+    W = []
+    for pure_cluster in pure_clusters:
+        for w in pure_cluster:
+            if w in W: continue
+            W.append(w)
+
+    clusters = pure_clusters
+
+    for cluster in clusters:
+        for w in W:
+            if w in cluster: continue
+
+            acc = 0
+            rej = 0
+
+            for S in combinations(cluster, 2):
+                test_cluster = set(S)
+                test_cluster.add(w)
+
+                if test_cluster in pure_clusters:
+                    acc += 1
+                else:
+                    rej += 1
+
+            if acc / (acc + rej) >= threshold:
+
+                new_cluster = set(S)
+                new_cluster.add(w)
+
+                clusters.append(new_cluster)
+                remove_subsets(pure_clusters, new_cluster)
 
 
-# def select_clusters(clusters):
-#
-#     sizes = [len(cluster) for cluster in clusters]
-#     sorted_clusters = [cluster for _, cluster in sorted(zip(sizes, clusters), reverse=True)]
-#     selected_clusters = []
-#
-#     for cluster1 in sorted_clusters:
-#
-#         for cluster2 in selected_clusters:
-#             if any([v in cluster1 for v in cluster2]):
-#                 continue
-#
-#     return None
+def remove_subsets(S, a):
+
+    to_remove = []
+
+    for b in S:
+        if a.issuperset(b):
+            to_remove.append(b)
+
+    for b in to_remove:
+        S.remove(b)
+
+
+def select_clusters(clusters):
+
+    sizes = [len(cluster) for cluster in clusters]
+    sorted_clusters = [cluster for _, cluster in sorted(zip(sizes, clusters))]
+    selected_clusters = []
+
+    while sorted_clusters:
+        cluster = sorted_clusters.pop(-1)
+        selected_clusters.append(cluster)
+        remove_subsets(sorted_clusters, cluster)
+
+    return selected_clusters
 
 
 n = int(sys.argv[1])
