@@ -31,7 +31,7 @@ def fpc(test, alpha=0.05, fisher=True, resample=False, frac=0.5):
     return pure_clusters
 
 
-def grow_clusters(pure_clusters, threshold):
+def grow_clusters(pure_clusters, threshold=0.5):
 
     # what are the members of pure-clusters?
     # does order matter?
@@ -42,7 +42,7 @@ def grow_clusters(pure_clusters, threshold):
             if w in W: continue
             W.append(w)
 
-    clusters = pure_clusters
+    clusters = pure_clusters.copy()
 
     for cluster in clusters:
         for w in W:
@@ -62,11 +62,13 @@ def grow_clusters(pure_clusters, threshold):
 
             if acc / (acc + rej) >= threshold:
 
-                new_cluster = set(S)
+                new_cluster = set(cluster)
                 new_cluster.add(w)
 
                 clusters.append(new_cluster)
                 remove_subsets(pure_clusters, new_cluster)
+
+    return clusters
 
 
 def remove_subsets(S, a):
@@ -104,13 +106,13 @@ g = np.zeros([6, 6], dtype=np.uint8)
 # g[2, 4] = 1
 # g[3, 4] = 1
 
-# g[0, 4] = 1
-# g[1, 4] = 1
-# g[2, 5] = 1
-# g[3, 5] = 1
-# g[4, 5] = 1
+g[0, 4] = 1
+g[1, 4] = 1
+g[2, 5] = 1
+g[3, 5] = 1
+g[4, 5] = 1
 
-g = er_dag(4, d=0.5)
+# g = er_dag(4, d=1.0)
 
 obs = [0, 1, 2, 3]
 
@@ -118,17 +120,23 @@ _, B, O = corr(g)
 X = simulate(B, O, n)
 df = pd.DataFrame(X)[obs]
 
-test = Wishart(df)
-pure_triples = fpc(test, resample=True)
-print("Wishart", pure_triples)
-print()
+# test = Wishart(df)
+# pure_triples = fpc(test, resample=True)
+# print("Wishart", pure_triples)
+# print()
 
-test = Bollen_Ting(df)
-pure_triples = fpc(test, fisher=False)
-print("Bollen Ting", pure_triples)
-print()
+# test = Bollen_Ting(df)
+# pure_triples = fpc(test, fisher=False)
+# print("Bollen Ting", pure_triples)
+# print()
 
 test = Ark(df)
 pure_triples = fpc(test, resample=True)
 print("Ark", pure_triples)
+print()
+clusters = grow_clusters(pure_triples, 0.1)
+print(clusters)
+print()
+clusters = select_clusters(clusters)
+print(clusters)
 print()
