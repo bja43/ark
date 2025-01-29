@@ -19,7 +19,7 @@ class Test:
 
     def tetrads(self, tets, resample=False, frac=0.5):
 
-        pass
+        raise Exception("No Implemention of 'tetrads'")
 
     def pure_triple(self, S, v, fisher=True, resample=False, frac=0.5):
 
@@ -32,7 +32,8 @@ class Test:
 
         if not fisher: return self.tetrads(tets[:-1])
 
-        p_values = [max(self.tetrads([tet], resample, frac), 1e-16) for tet in tets]
+        p_values = [self.tetrad(tet, resample, frac) for tet in tets]
+        p_values = [max(p_value, 1e-16) for p_value in p_values]
         combined = -2 * np.sum(np.log(p_values))
 
         print(S, v)
@@ -43,7 +44,7 @@ class Test:
 
 class Wishart(Test):
 
-    def tetrads(self, tets, resample=False, frac=0.5):
+    def tetrad(self, tet, resample=False, frac=0.5):
 
         if resample:
             df = self.df.sample(frac=frac)
@@ -53,7 +54,6 @@ class Wishart(Test):
             n = self.n
             S = self.S
 
-        tet = tets[0]
         a, b = tet
 
         sigma2 = (n + 1) / (n - 1)
@@ -69,6 +69,11 @@ class Wishart(Test):
 
 class Bollen_Ting(Test):
 
+    def tetrad(self, tet, resample=False, frac=0.5):
+
+        return self.tetrads([tet], resample, frac)
+
+    # assumes S is cov of multivariate Gaussian
     def tetrads(self, tets, resample=False, frac=0.5):
 
         if resample:
@@ -112,13 +117,10 @@ class Bollen_Ting(Test):
         return 1 - chi2.cdf(T, len(tets))
 
 
-class Ark(Test):
+class CCA(Test):
 
-    def __init__(self, df, tbd=None):
-
-        super().__init__(df)
-
-    def tetrads(self, tets, resample=False, frac=0.5):
+    # assumes |a| = |b| = k and r = k - 1
+    def tetrad(self, tet, resample=False, frac=0.5):
 
         if resample:
             df = self.df.sample(frac=frac)
@@ -128,19 +130,50 @@ class Ark(Test):
             n = self.n
             S = self.S
 
-        tet = tets[0]
+        a, b = tet
+        k = len(a)
+
+        XY = S[np.ix_(a, b)]
+        a = svd(XY)[1][k - 1:]
+        stat = np.sum(np.log(1 - np.power(a, 2)))
+        stat *= k + 3 / 2 - n
+
+        return 1 - chi2.cdf(stat, 1)
+
+
+class ARK(Test):
+
+    def __init__(self, df, sp=1):
+
+        super().__init__(df)
+        if sp > 0: self.sp = sp
+        else: self.sp = 1 - sp
+        self.S1 = np.cov(df.values[:int(self.sp * self.n), :].T)
+        self.S2 = np.cov(df.values[int(self.sp * self.n):, :].T)
+
+    def tetrad(self, tet, resample=False, frac=0.5):
+
+        if resample:
+            df = self.df.sample(frac=frac)
+            n, _ = df.shape
+            S1 = np.cov(df.values[:int(self.sp * n), :].T)
+            S2 = np.cov(df.values[int(self.sp * n):, :].T)
+        else:
+            n = self.n
+            S1 = self.S1
+            S2 = self.S2
+
+        tet = tet
         a, b = tet
         z = len(a)
 
-        XY = S[np.ix_(a, b)]
-
-        # if T is None:
+        if self.sp < 1: XY = S2[np.ix_(a, b)]
+        else: XY = S1[np.ix_(a, b)]
         U, _, VT = svd(XY)
-        # else:
-        # U, _, VT = svd(T[np.ix_(a, b)])
 
-        XXi = inv(S[np.ix_(a, a)])
-        YYi = inv(S[np.ix_(b, b)])
+        if self.sp < 1: XY = S1[np.ix_(a, b)]
+        XXi = inv(S1[np.ix_(a, a)])
+        YYi = inv(S1[np.ix_(b, b)])
 
         A = U.T @ XXi @ U
         B = VT @ YYi @ VT.T
@@ -166,6 +199,7 @@ class Ark(Test):
         P = inv(R[np.ix_(idx, idx)])
 
         p_corr = - P[0, 1] / np.sqrt(P[0, 0] * P[1, 1])
-        z_score = np.sqrt(n - len(idx) - 1) * np.arctanh(p_corr)
+        z_score = np.arctanh(p_corr)
+        z_score *= np.sqrt(int(self.sp * n) - len(idx) - 1)
 
         return 2 * norm.cdf(-abs(z_score))

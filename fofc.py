@@ -5,7 +5,7 @@ import pandas as pd
 from itertools import combinations
 from dao import corr, er_dag, simulate
 
-from vtet import Wishart, Bollen_Ting, Ark
+from vtet import Wishart, Bollen_Ting, CCA, ARK
 
 
 def fpc(test, alpha=0.05, fisher=True, resample=False, frac=0.5):
@@ -101,16 +101,16 @@ n = int(sys.argv[1])
 
 g = np.zeros([6, 6], dtype=np.uint8)
 
-# g[0, 4] = 1
-# g[1, 4] = 1
-# g[2, 4] = 1
-# g[3, 4] = 1
-
 g[0, 4] = 1
 g[1, 4] = 1
-g[2, 5] = 1
-g[3, 5] = 1
-g[4, 5] = 1
+g[2, 4] = 1
+g[3, 4] = 1
+
+# g[0, 4] = 1
+# g[1, 4] = 1
+# g[2, 5] = 1
+# g[3, 5] = 1
+# g[4, 5] = 1
 
 # g = er_dag(4, d=1.0)
 
@@ -130,10 +130,16 @@ df = pd.DataFrame(X)[obs]
 # print("Bollen Ting", pure_triples)
 # print()
 
-test = Ark(df)
+# test = CCA(df)
+# pure_triples = fpc(test, resample=True)
+# print("CCA", pure_triples)
+# print()
+
+test = ARK(df, sp=0.5)
 pure_triples = fpc(test, resample=True)
-print("Ark", pure_triples)
+print("ARK", pure_triples)
 print()
+
 clusters = grow_clusters(pure_triples, 0.1)
 print(clusters)
 print()
