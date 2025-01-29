@@ -14,11 +14,13 @@ from vtet import Wishart, Bollen_Ting, CCA, ARK
 
 
 reps = 1000
-n = 500
+n = 100
 
-sp = 0.5
-resample = True
-frac = 0.9
+sp = 0.25
+resample = False
+frac = 0.5
+
+pure_clusters = True
 
 rng = default_rng()
 
@@ -40,16 +42,16 @@ if alt: g = er_dag(p=4, d=1)
 
 obs = (0, 1, 2, 3)
 
-# names = ["Wishart", "Bollen-Ting", "Bollen-Ting-F", "CCA", "ARK-1", f"ARK-{sp}"]
-names = ["Wishart", "Bollen-Ting", "CCA", "ARK-1", f"ARK-{sp}"]
+if pure_clusters: names = ["Wishart", "Bollen-Ting", "Bollen-Ting-F", "CCA", "ARK-1", f"ARK-{sp}"]
+else: names = ["Wishart", "Bollen-Ting", "CCA", "ARK-1", f"ARK-{sp}"]
 p_values = {name: [] for name in names}
 
 for _ in range(reps):
 
     _, B, O = corr(g)
     df = pd.DataFrame(simulate(B, O, n, err))
-    # tests = [Wishart(df), Bollen_Ting(df), Bollen_Ting(df), CCA(df), ARK(df, 1), ARK(df, sp)]
-    tests = [Wishart(df), Bollen_Ting(df), CCA(df), ARK(df, 1), ARK(df, sp)]
+    if pure_clusters: tests = [Wishart(df), Bollen_Ting(df), Bollen_Ting(df), CCA(df), ARK(df, 1), ARK(df, sp)]
+    else: tests = [Wishart(df), Bollen_Ting(df), CCA(df), ARK(df, 1), ARK(df, sp)]
 
     tets = []
     for iX in combinations(obs, 2):
@@ -58,9 +60,10 @@ for _ in range(reps):
         tets.append((iX, iY))
 
     for i, test in enumerate(tests):
-        # if i == 1: p_value = test.pure_triple(S=obs[:-1], v=obs[-1], fisher=False, resample=resample, frac=frac)
-        # else: p_value = test.pure_triple(S=obs[:-1], v=obs[-1], fisher=True, resample=resample, frac=frac)
-        p_value = test.tetrad(tet=tets[0], resample=False)
+        if pure_clusters:
+            if i == 1: p_value = test.pure_cluster(S=obs[:-1], v=obs[-1], fisher=False, resample=resample, frac=frac)
+            else: p_value = test.pure_cluster(S=obs[:-1], v=obs[-1], fisher=True, resample=resample, frac=frac)
+        else: p_value = test.tetrad(tet=tets[0], resample=False)
         p_values[names[i]].append(p_value)
 
 df = pd.DataFrame.from_dict(p_values)

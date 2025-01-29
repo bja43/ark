@@ -41,6 +41,31 @@ class Test:
 
         return 1 - chi2.cdf(combined, 2 * len(p_values))
 
+    def pure_cluster(self, S, v, fisher=True, resample=False, frac=0.5):
+
+        tets = []
+
+        # |S| + 1 should be even
+        k = int((len(S) + 1) / 2)
+
+        for a in combinations(S, k):
+            b = tuple([b for b in S if b not in a] + [v])
+            tet = (a, b)
+            tets.append(tet)
+
+        # non-redudant
+        if not fisher and k == 2: return self.tetrads(tets[:2])
+        if not fisher and k == 3: return self.tetrads(tets[:3] + tets[4:6])
+
+        p_values = [self.tetrad(tet, resample, frac) for tet in tets]
+        p_values = [max(p_value, 1e-16) for p_value in p_values]
+        combined = -2 * np.sum(np.log(p_values))
+
+        print(S, v)
+        print(p_values)
+
+        return 1 - chi2.cdf(combined, 2 * len(p_values))
+
 
 class Wishart(Test):
 
